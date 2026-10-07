@@ -52,6 +52,8 @@ from config import (
     TEST_FILE,
 )
 
+from data.loader import load_data
+
 plt.rcParams.update({
     "font.size": 18,
     "axes.titlesize": 22,
@@ -92,23 +94,6 @@ QUANTILE_PARAMS = GBRT_PARAMS.copy()
 QUANTILE_PARAMS.update({"loss": "quantile"})  # For quantile regression
 
 # ---------------------- LOAD DATA ----------------------
-def load_data():
-    train = pd.read_csv(TRAIN_FILE, index_col=0)
-    test = pd.read_csv(TEST_FILE, index_col=0)
-
-    feature_cols = train.columns.drop(["Mass", "lon", "lat"])
-    X = train[feature_cols].copy()
-    y = train["Mass"].copy()
-    coords_train = train[["lon", "lat"]].copy()
-    X_test = test[feature_cols].copy()
-    coords_test = test[["lon", "lat"]].copy()
-
-    # Standardize features
-    scaler = StandardScaler()
-    X[feature_cols] = scaler.fit_transform(X[feature_cols])
-    X_test[feature_cols] = scaler.transform(X_test[feature_cols])
-
-    return X, y, coords_train, X_test, coords_test
 
 # ---------------------- SAVE PREDICTIONS ----------------------
 def save_predictions(coords, y_pred, filename):
@@ -299,7 +284,10 @@ def plot_small_large_histograms(values, threshold, title_prefix, filename_prefix
 # ---------------------- MAIN ----------------------
 if __name__ == "__main__":
 
-    X, y, coords_train, X_test, coords_test = load_data()
+    X, y, coords_train, X_test, coords_test = load_data(
+        TRAIN_FILE,
+        TEST_FILE,
+    )
 
     # K-Fold Training + Prediction
     y_true_all, y_pred_all, metrics_all = kfold_gbrt_log(X, y, n_splits=N_SPLITS)
