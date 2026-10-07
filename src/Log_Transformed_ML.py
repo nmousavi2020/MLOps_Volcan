@@ -43,6 +43,9 @@ import matplotlib.pyplot as plt
 
 import matplotlib.pyplot as plt
 
+from models.model import train_gbrt, predict_from_log
+from models.metrics import compute_metrics
+
 from config import (
     N_SPLITS,
     EPS,
@@ -140,12 +143,10 @@ def kfold_gbrt_log(X, y, n_splits=5):
         y_train_log = np.log(y_train + EPS)
 
         # Train standard GBRT
-        model = GradientBoostingRegressor(**GBRT_PARAMS)
-        model.fit(X_train, y_train_log)
+        model = train_gbrt(X_train, y_train_log, GBRT_PARAMS)
 
         # Predict
-        y_pred_log = model.predict(X_test)
-        y_pred = np.exp(y_pred_log) - EPS
+        y_pred = predict_from_log(model, X_test, EPS)
 
         # ---------------------- Quantile for extremes ----------------------
         extreme_mask = y_test > EXTREME_THRESHOLD
