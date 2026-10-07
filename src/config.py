@@ -3,3 +3,5 @@ EPS = 1e-6
 EXTREME_THRESHOLD = 1.5
 QUANTILES = [0.8]
 RANDOM_STATE = 42
+TRAIN_FILE = "global.csv"
+FEATURE_FILE = "gris_features.csv"
