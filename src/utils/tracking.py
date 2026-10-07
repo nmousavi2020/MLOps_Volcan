@@ -1,7 +1,7 @@
 import mlflow
 import mlflow.sklearn
 
-MLFLOW_URI = "http://localhost:5000"
+MLFLOW_URI = "http://mlflow:5000"
 
 
 def start_run(run_name):
@@ -22,5 +22,6 @@ def log_model(model, name="volcanic_mass_model"):
     mlflow.sklearn.log_model(
         model,
         name=name,
+        registered_model_name=name,
         skops_trusted_types=["sklearn.tree._tree.Tree"],
     )

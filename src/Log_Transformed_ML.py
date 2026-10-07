@@ -59,8 +59,7 @@ from config import (
 from data.loader import load_data
 from models.metrics import compute_metrics
 from models.model import predict_from_log, train_gbrt
-from utils.tracking import log_metrics, log_params, start_run
-
+from utils.tracking import log_metrics, log_model, log_params, start_run
 
 plt.rcParams.update({
     "font.size": 18,
@@ -441,6 +440,8 @@ if __name__ == "__main__":
         y_train_log,
         GBRT_PARAMS,
     )
+
+    log_model(final_model)
 
     y_test_pred = predict_from_log(
         final_model,
