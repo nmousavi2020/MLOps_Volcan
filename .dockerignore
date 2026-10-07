@@ -1,0 +1,9 @@
+.git
+.github
+mlruns
+mlflow.db
+__pycache__
+*.pyc
+plots
+predictions
+tests
