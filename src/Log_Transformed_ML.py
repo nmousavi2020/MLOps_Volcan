@@ -43,6 +43,13 @@ import matplotlib.pyplot as plt
 
 import matplotlib.pyplot as plt
 
+from config import (
+    N_SPLITS,
+    EPS,
+    EXTREME_THRESHOLD,
+    QUANTILES,
+)
+
 plt.rcParams.update({
     "font.size": 18,
     "axes.titlesize": 22,
@@ -59,11 +66,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error, median_absolute_error
 
 # ---------------------- CONFIG ----------------------
-N_SPLITS = 2
-EPS = 1e-6
-EXTREME_THRESHOLD = 1.5  # Gt, mass above which quantile regression is applied
-QUANTILES = [0.8]
-
 TRAIN_FILE = "global.csv"
 TEST_FILE = "gris_features.csv"
 
