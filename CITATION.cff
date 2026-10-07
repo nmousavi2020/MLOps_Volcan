@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+title: "Log_Transformed_ML - Volcanic Eruption Mass Estimation"
+message: "If you use this software, please cite the associated publication."
+type: software
+
+authors:
+
+* family-names: Mousavi
+  given-names: N.
+* family-names: Fullea
+  given-names: J.
+* family-names: Mousavi
+  given-names: S. M.
+
+year: 2026
+version: "1.0.0"
+
+repository-code: "https://github.com/nmousavi2020/Log_Transformed_ML"
+
+doi: "10.1029/2026JH001264"
+
+license: "All rights reserved"
+
+preferred-citation:
+type: article
+authors:
+- family-names: Mousavi
+given-names: N.
+- family-names: Fullea
+given-names: J.
+- family-names: Mousavi
+given-names: S. M.
+title: "A machine learning approach for volcanic eruption mass estimation"
+journal: "Journal of Geophysical Research: Machine Learning and Computation"
+volume: 3
+year: 2026
+doi: "10.1029/2026JH001264"

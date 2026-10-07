@@ -1,0 +1,475 @@
+# Log_Transformed_ML
+
+A machine-learning workflow for estimating volcanic eruption mass using **Gradient Boosting Regression Trees (GBRT)** and logarithmic target transformation.
+
+The workflow includes K-fold cross-validation, prediction evaluation, quantile regression for extreme eruptions, bias correction, and visualization of model predictions.
+
+## Scientific Reference
+
+This software is associated with the following publication:
+
+Mousavi, N., Fullea, J., & Mousavi, S. M. (2026). *A machine learning approach for volcanic eruption mass estimation.* Journal of Geophysical Research: Machine Learning and Computation, 3, e2026JH001264.
+
+**DOI:** https://doi.org/10.1029/2026JH001264
+
+If you use this software in academic work, please cite the publication above.
+
+Citation information is also provided in `CITATION.cff`.
+
+---
+
+## Overview
+
+`Log_Transformed_ML` estimates volcanic eruption mass from a set of input features using Gradient Boosting Regression Trees.
+
+Because volcanic eruption masses can span several orders of magnitude, the target variable (`Mass`) is transformed into logarithmic space before model training.
+
+The workflow performs:
+
+1. Feature selection
+2. Feature standardization
+3. Logarithmic target transformation
+4. GBRT model training
+5. K-fold cross-validation
+6. Quantile regression for extreme eruptions
+7. Bias correction
+8. Prediction generation
+9. Model evaluation
+10. Visualization
+
+---
+
+## Workflow
+
+```text
+Input Data
+    │
+    ▼
+Feature Selection
+    │
+    ▼
+Standardization
+    │
+    ▼
+Log(Mass + EPS)
+    │
+    ▼
+GBRT Regression
+    │
+    ├── K-Fold Cross-Validation
+    │
+    └── Quantile Regression
+            │
+            ▼
+     Extreme Eruptions
+            │
+            ▼
+     Inverse Log Transformation
+            │
+            ▼
+       Bias Correction
+            │
+            ├───────────────┐
+            ▼               ▼
+       CSV Output       Diagnostic Plots
+```
+
+## Model
+
+The implementation uses `GradientBoostingRegressor` from **scikit-learn**.
+
+### GBRT Parameters
+
+```python
+GBRT_PARAMS = dict(
+    loss="huber",
+    learning_rate=0.1,
+    n_estimators=1000,
+    max_depth=4,
+    max_features=0.3,
+    subsample=1.0,
+    random_state=42,
+)
+```
+
+For quantile regression, the loss function is changed to:
+
+```python
+loss="quantile"
+```
+
+with:
+
+```python
+QUANTILES = [0.8]
+```
+
+Quantile regression is applied to eruptions exceeding the configured extreme-mass threshold.
+
+---
+
+## Log-Target Transformation
+
+The target variable is transformed using:
+
+```python
+y_log = np.log(y + EPS)
+```
+
+where:
+
+```python
+EPS = 1e-6
+```
+
+After prediction, values are transformed back to the original mass scale:
+
+```python
+y_pred = np.exp(y_pred_log) - EPS
+```
+
+This approach helps accommodate the strongly skewed distribution and large dynamic range of volcanic eruption masses.
+
+---
+
+## Feature Standardization
+
+Predictor variables are standardized using `StandardScaler`.
+
+The scaler is fitted using the training dataset and subsequently applied to the test dataset:
+
+```python
+scaler.fit_transform(X)
+scaler.transform(X_test)
+```
+
+This ensures that the test dataset does not influence the scaling parameters.
+
+---
+
+## Quantile Regression for Extreme Eruptions
+
+A separate quantile GBRT model is applied to eruptions above the configured threshold:
+
+```python
+EXTREME_THRESHOLD = 1.5
+```
+
+The quantile model uses:
+
+```python
+loss="quantile"
+alpha=0.8
+```
+
+This component is intended to improve the treatment of high-mass eruptions and is **not equivalent to a full P10–P90 predictive uncertainty interval**.
+
+---
+
+## Bias Correction
+
+After prediction, a global multiplicative bias correction is applied:
+
+```python
+bias = np.mean(y_train) / np.mean(y_pred)
+y_pred *= bias
+```
+
+This correction aligns the overall prediction scale with the mean observed training mass.
+
+---
+
+## Repository Structure
+
+```text
+Log_Transformed_ML/
+│
+├── .gitignore
+├── CITATION.cff
+├── LICENSE
+├── Log_Transformed_ML.py
+├── README.md
+├── requirements.txt
+├── global.csv
+├── gris_features.csv
+│
+├── plots/
+│   ├── Observed_vs_Predicted_KFold_Log.png
+│   ├── predicted_mass_large.png
+│   ├── predicted_mass_small.png
+│   ├── training_mass_large.png
+│   └── training_mass_small.png
+│
+└── predictions/
+    └── predicted_mass_test.csv
+```
+
+---
+
+## Main Components
+
+### `Log_Transformed_ML.py`
+
+Main executable script containing:
+
+* Data loading
+* Feature preprocessing
+* GBRT training
+* K-fold cross-validation
+* Quantile regression
+* Bias correction
+* Prediction generation
+* Evaluation metrics
+* Visualization
+
+### `global.csv`
+
+Training dataset containing observed volcanic eruption masses and predictor variables.
+
+### `gris_features.csv`
+
+Test dataset containing the predictor variables and geographic coordinates used for generating predictions.
+
+### `plots/`
+
+Contains diagnostic and mass-distribution plots generated by the workflow.
+
+### `predictions/`
+
+Contains the generated test-set mass predictions.
+
+---
+
+## Input Data
+
+### Training Dataset
+
+The training dataset is:
+
+```text
+global.csv
+```
+
+It must contain:
+
+* `Mass` — observed volcanic eruption mass
+* `lon` — longitude
+* `lat` — latitude
+* Predictor/feature columns
+
+The first CSV column is treated as the index.
+
+The feature columns are automatically selected by excluding:
+
+```python
+["Mass", "lon", "lat"]
+```
+
+### Test Dataset
+
+The test dataset is:
+
+```text
+gris_features.csv
+```
+
+It must contain:
+
+* The same predictor columns used for training
+* `lon`
+* `lat`
+
+A `Mass` column is not required for the test dataset.
+
+The feature names and preprocessing requirements must be compatible between the training and test datasets.
+
+---
+
+## Installation
+
+Python 3.9 or later is recommended.
+
+Install the required dependencies with:
+
+```bash
+pip install -r requirements.txt
+```
+
+Main dependencies include:
+
+* NumPy
+* pandas
+* Matplotlib
+* scikit-learn
+
+---
+
+## Usage
+
+From the repository root, run:
+
+```bash
+python Log_Transformed_ML.py
+```
+
+The program will:
+
+1. Load the training and test datasets.
+2. Select the model features.
+3. Standardize the predictor variables.
+4. Transform the target into logarithmic space.
+5. Perform K-fold cross-validation.
+6. Train the final GBRT model.
+7. Apply quantile regression to extreme predictions.
+8. Apply bias correction.
+9. Save the test predictions.
+10. Generate diagnostic plots.
+
+---
+
+## Outputs
+
+### Prediction CSV
+
+The prediction file is generated at:
+
+```text
+predictions/predicted_mass_test.csv
+```
+
+It contains:
+
+| Column           | Description                      |
+| ---------------- | -------------------------------- |
+| `lon`            | Longitude                        |
+| `lat`            | Latitude                         |
+| `predicted_mass` | Predicted volcanic eruption mass |
+
+The mass unit is **Gt (gigatonnes)**, assuming the input `Mass` variable is provided in Gt.
+
+### Diagnostic Plot
+
+The observed-versus-predicted plot is:
+
+```text
+plots/Observed_vs_Predicted_KFold_Log.png
+```
+
+The plot uses logarithmic axes and displays predictions from the K-fold validation procedure.
+
+### Mass Distribution Plots
+
+The workflow also generates separate histograms for small and large eruptions:
+
+```text
+plots/training_mass_small.png
+plots/training_mass_large.png
+plots/predicted_mass_small.png
+plots/predicted_mass_large.png
+```
+
+The threshold used for this separation is:
+
+```text
+1.5 Gt
+```
+
+---
+
+## Evaluation Metrics
+
+The cross-validation procedure reports several metrics, including:
+
+* R²
+* Log-space R²
+* RMSE
+* MAE
+* Median Absolute Error
+* Median Relative Error
+* Mean Log Error
+* Normalized error metrics
+
+The log-space metrics are particularly relevant given the broad dynamic range of volcanic eruption masses.
+
+---
+
+## Reproducibility
+
+The workflow uses:
+
+```python
+random_state=42
+```
+
+to provide reproducible behavior for the configured stochastic components.
+
+For reproducible results, use consistent:
+
+* Input datasets
+* Feature definitions
+* Python version
+* Package versions
+* Model parameters
+* Preprocessing procedures
+
+---
+
+## Data and Scientific Considerations
+
+Prediction quality depends strongly on the quality and representativeness of the training dataset.
+
+Particular care should be taken when applying the model to samples that are substantially outside the feature distribution represented by the training data.
+
+Predictions should therefore be interpreted in the context of:
+
+* Training-data coverage
+* Feature distributions
+* Model assumptions
+* Data quality
+* The scientific context of the application
+
+The quantile-regression component used for extreme eruptions should not be interpreted as a complete probabilistic uncertainty model or as a P10–P90 confidence interval.
+
+---
+
+## Citation
+
+If you use this software or methodology in a publication, thesis, report, or other academic work, please cite:
+
+```bibtex
+@article{Mousavi2026VolcanicMass,
+  author  = {Mousavi, N. and Fullea, J. and Mousavi, S. M.},
+  title   = {A machine learning approach for volcanic eruption mass estimation},
+  journal = {Journal of Geophysical Research: Machine Learning and Computation},
+  volume  = {3},
+  pages   = {e2026JH001264},
+  year    = {2026},
+  doi     = {10.1029/2026JH001264}
+}
+```
+
+The repository also contains a `CITATION.cff` file for machine-readable citation metadata.
+
+---
+
+## License
+
+Copyright © 2026 N. Mousavi, J. Fullea, and S. M. Mousavi.
+
+All rights reserved.
+
+See the `LICENSE` file for the terms governing the use, reproduction, modification, and distribution of this software.
+
+---
+
+## Acknowledgments
+
+This software was developed in support of research on machine-learning-based volcanic eruption mass estimation.
+
+For the scientific methodology and detailed research context, please refer to the associated publication.
+
+---
+
+## Contact
+
+For scientific questions, methodology-related issues, or questions concerning the implementation, please refer to the associated publication and the repository documentation.
