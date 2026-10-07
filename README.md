@@ -1,12 +1,10 @@
-# Log_Transformed_ML
+# MLOps_Volcan
 
-A machine-learning workflow for estimating volcanic eruption mass using **Gradient Boosting Regression Trees (GBRT)** and logarithmic target transformation.
+An end-to-end MLOps pipeline for estimating volcanic eruption mass using **Gradient Boosting Regression Trees (GBRT)** with logarithmic target transformation.
 
-The workflow includes K-fold cross-validation, prediction evaluation, quantile regression for extreme eruptions, bias correction, and visualization of model predictions.
+The project combines machine learning, experiment tracking, model registry, automated testing, Docker, and Docker Compose into a reproducible workflow.
 
 ## Scientific Reference
-
-This software is associated with the following publication:
 
 Mousavi, N., Fullea, J., & Mousavi, S. M. (2026). *A machine learning approach for volcanic eruption mass estimation.* Journal of Geophysical Research: Machine Learning and Computation, 3, e2026JH001264.
 
@@ -18,15 +16,15 @@ Citation information is also provided in `CITATION.cff`.
 
 ---
 
-## Overview
+## Project Overview
 
-`Log_Transformed_ML` estimates volcanic eruption mass from a set of input features using Gradient Boosting Regression Trees.
+The pipeline estimates volcanic eruption mass from geophysical and related predictor variables.
 
-Because volcanic eruption masses can span several orders of magnitude, the target variable (`Mass`) is transformed into logarithmic space before model training.
+Because eruption masses span several orders of magnitude, the target variable is transformed into logarithmic space before model training.
 
-The workflow performs:
+The workflow includes:
 
-1. Feature selection
+1. Data loading and feature selection
 2. Feature standardization
 3. Logarithmic target transformation
 4. GBRT model training
@@ -36,45 +34,119 @@ The workflow performs:
 8. Prediction generation
 9. Model evaluation
 10. Visualization
+11. MLflow experiment tracking
+12. MLflow model registration
+13. Automated testing with GitHub Actions
+14. Containerized execution with Docker
+15. Multi-container orchestration with Docker Compose
 
 ---
 
-## Workflow
+## MLOps Architecture
 
 ```text
-Input Data
-    │
-    ▼
-Feature Selection
-    │
-    ▼
-Standardization
-    │
-    ▼
-Log(Mass + EPS)
-    │
-    ▼
-GBRT Regression
-    │
-    ├── K-Fold Cross-Validation
-    │
-    └── Quantile Regression
-            │
-            ▼
-     Extreme Eruptions
-            │
-            ▼
-     Inverse Log Transformation
-            │
-            ▼
-       Bias Correction
-            │
-            ├───────────────┐
-            ▼               ▼
-       CSV Output       Diagnostic Plots
+                    ┌─────────────────────┐
+                    │      Input Data     │
+                    │ global.csv          │
+                    │ gris_features.csv   │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │    Data Loader      │
+                    │ Feature Selection   │
+                    │ Standardization     │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │     ML Pipeline     │
+                    │                     │
+                    │ Log Transformation  │
+                    │ GBRT                │
+                    │ K-Fold CV           │
+                    │ Quantile Regression │
+                    │ Bias Correction     │
+                    └──────────┬──────────┘
+                               │
+                 ┌─────────────┴─────────────┐
+                 ▼                           ▼
+        ┌─────────────────┐         ┌─────────────────┐
+        │    MLflow       │         │     Outputs     │
+        │                 │         │                 │
+        │ Experiments     │         │ Predictions     │
+        │ Metrics         │         │ Diagnostic      │
+        │ Parameters      │         │ Plots           │
+        │ Model Registry  │         └─────────────────┘
+        └─────────────────┘
+
+        Docker / Docker Compose
+                 │
+        ┌────────┴────────┐
+        ▼                 ▼
+   MLflow Server      ML Pipeline
 ```
 
-## Model
+---
+
+## Repository Structure
+
+```text
+MLOps_Volcan/
+│
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+│
+├── src/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── Log_Transformed_ML.py
+│   │
+│   ├── data/
+│   │   ├── __init__.py
+│   │   └── loader.py
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── model.py
+│   │   └── metrics.py
+│   │
+│   └── utils/
+│       ├── __init__.py
+│       └── tracking.py
+│
+├── tests/
+│   ├── __init__.py
+│   └── test_config.py
+│
+├── plots/
+│   ├── Observed_vs_Predicted_KFold_Log.png
+│   ├── predicted_mass_large.png
+│   ├── predicted_mass_small.png
+│   ├── training_mass_large.png
+│   └── training_mass_small.png
+│
+├── predictions/
+│   └── predicted_mass_test.csv
+│
+├── global.csv
+├── gris_features.csv
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
+├── .gitignore
+├── CITATION.cff
+├── LICENSE
+├── pytest.ini
+├── requirements.txt
+├── requirements-dev.txt
+└── README.md
+```
+
+---
+
+## Machine Learning Model
 
 The implementation uses `GradientBoostingRegressor` from **scikit-learn**.
 
@@ -92,19 +164,18 @@ GBRT_PARAMS = dict(
 )
 ```
 
-For quantile regression, the loss function is changed to:
+For extreme eruptions, quantile regression uses:
 
 ```python
 loss="quantile"
+alpha=0.8
 ```
 
-with:
+The configured quantile is:
 
 ```python
 QUANTILES = [0.8]
 ```
-
-Quantile regression is applied to eruptions exceeding the configured extreme-mass threshold.
 
 ---
 
@@ -116,127 +187,253 @@ The target variable is transformed using:
 y_log = np.log(y + EPS)
 ```
 
-where:
+with:
 
 ```python
 EPS = 1e-6
 ```
 
-After prediction, values are transformed back to the original mass scale:
+Predictions are transformed back to the original scale using:
 
 ```python
 y_pred = np.exp(y_pred_log) - EPS
 ```
 
-This approach helps accommodate the strongly skewed distribution and large dynamic range of volcanic eruption masses.
+This transformation helps accommodate the strongly skewed distribution and large dynamic range of volcanic eruption masses.
 
 ---
 
-## Feature Standardization
+## Data Processing
 
-Predictor variables are standardized using `StandardScaler`.
+The predictor variables are standardized using `StandardScaler`.
 
-The scaler is fitted using the training dataset and subsequently applied to the test dataset:
+The training and test datasets are loaded by:
 
-```python
-scaler.fit_transform(X)
-scaler.transform(X_test)
+```text
+src/data/loader.py
 ```
 
-This ensures that the test dataset does not influence the scaling parameters.
+The feature columns are selected by excluding:
+
+```python
+["Mass", "lon", "lat"]
+```
+
+The geographic coordinates are retained separately for the prediction output.
 
 ---
 
-## Quantile Regression for Extreme Eruptions
+## Quantile Regression
 
-A separate quantile GBRT model is applied to eruptions above the configured threshold:
+A separate quantile GBRT model is used for extreme eruptions above:
 
 ```python
 EXTREME_THRESHOLD = 1.5
 ```
 
-The quantile model uses:
+The configured quantile is:
 
 ```python
-loss="quantile"
-alpha=0.8
+alpha = 0.8
 ```
 
-This component is intended to improve the treatment of high-mass eruptions and is **not equivalent to a full P10–P90 predictive uncertainty interval**.
+This component is intended to improve the treatment of high-mass eruptions.
+
+It is **not equivalent to a complete probabilistic uncertainty model or a P10–P90 prediction interval**.
 
 ---
 
 ## Bias Correction
 
-After prediction, a global multiplicative bias correction is applied:
+A global multiplicative bias correction is applied after prediction:
 
 ```python
 bias = np.mean(y_train) / np.mean(y_pred)
 y_pred *= bias
 ```
 
-This correction aligns the overall prediction scale with the mean observed training mass.
+This adjusts the overall prediction scale relative to the mean observed training mass.
 
 ---
 
-## Repository Structure
+## Configuration
+
+Central configuration parameters are stored in:
 
 ```text
-Log_Transformed_ML/
-│
-├── .gitignore
-├── CITATION.cff
-├── LICENSE
-├── Log_Transformed_ML.py
-├── README.md
-├── requirements.txt
-├── global.csv
-├── gris_features.csv
-│
-├── plots/
-│   ├── Observed_vs_Predicted_KFold_Log.png
-│   ├── predicted_mass_large.png
-│   ├── predicted_mass_small.png
-│   ├── training_mass_large.png
-│   └── training_mass_small.png
-│
-└── predictions/
-    └── predicted_mass_test.csv
+src/config.py
+```
+
+Current configuration includes:
+
+```python
+N_SPLITS = 2
+EPS = 1e-6
+EXTREME_THRESHOLD = 1.5
+QUANTILES = [0.8]
+RANDOM_STATE = 42
+TRAIN_FILE = "global.csv"
+TEST_FILE = "gris_features.csv"
 ```
 
 ---
 
-## Main Components
+## MLflow Experiment Tracking
 
-### `Log_Transformed_ML.py`
+The project uses **MLflow** for experiment tracking.
 
-Main executable script containing:
+Tracked information includes:
 
-* Data loading
-* Feature preprocessing
-* GBRT training
-* K-fold cross-validation
-* Quantile regression
-* Bias correction
-* Prediction generation
-* Evaluation metrics
-* Visualization
+* Model parameters
+* Cross-validation metrics
+* Experiment runs
+* Trained models
 
-### `global.csv`
+The MLflow experiment is:
 
-Training dataset containing observed volcanic eruption masses and predictor variables.
+```text
+Volcanic_Mass_Prediction
+```
 
-### `gris_features.csv`
+The final GBRT model is registered in the MLflow Model Registry as:
 
-Test dataset containing the predictor variables and geographic coordinates used for generating predictions.
+```text
+volcanic_mass_model
+```
 
-### `plots/`
+A `champion` alias is used for the selected model version.
 
-Contains diagnostic and mass-distribution plots generated by the workflow.
+---
 
-### `predictions/`
+## Docker
 
-Contains the generated test-set mass predictions.
+The ML pipeline can be executed inside a Docker container.
+
+Build the image:
+
+```bash
+docker build -t mlops-volcan .
+```
+
+Run the pipeline:
+
+```bash
+docker run --rm mlops-volcan
+```
+
+The Docker image uses Python 3.12.
+
+---
+
+## Docker Compose
+
+Docker Compose provides the MLflow tracking server and ML pipeline as separate services.
+
+Start MLflow:
+
+```bash
+docker compose up -d mlflow
+```
+
+Run the ML pipeline:
+
+```bash
+docker compose run --rm mlpipeline
+```
+
+Check running services:
+
+```bash
+docker compose ps
+```
+
+The MLflow UI is available at:
+
+```text
+http://localhost:5000
+```
+
+The pipeline communicates with the MLflow service through the Docker Compose service name:
+
+```text
+http://mlflow:5000
+```
+
+---
+
+## Automated Testing
+
+Tests are implemented using **pytest**.
+
+Run tests locally:
+
+```bash
+pytest
+```
+
+Development dependencies are defined in:
+
+```text
+requirements-dev.txt
+```
+
+The project also uses GitHub Actions to automatically run the test suite on pushes and pull requests.
+
+The workflow is located at:
+
+```text
+.github/workflows/tests.yml
+```
+
+---
+
+## Installation
+
+Python 3.12 is used for the project environment.
+
+Install the main dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+For development and testing:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+---
+
+## Running the Pipeline
+
+From the repository root:
+
+```bash
+python src/Log_Transformed_ML.py
+```
+
+For the containerized MLOps workflow:
+
+```bash
+docker compose up -d mlflow
+docker compose run --rm mlpipeline
+```
+
+The pipeline will:
+
+1. Load the datasets.
+2. Select model features.
+3. Standardize predictor variables.
+4. Transform the target into logarithmic space.
+5. Perform K-fold cross-validation.
+6. Train the final GBRT model.
+7. Apply quantile regression to extreme predictions.
+8. Apply bias correction.
+9. Log experiment information to MLflow.
+10. Register the final model.
+11. Generate predictions.
+12. Generate diagnostic plots.
 
 ---
 
@@ -244,100 +441,46 @@ Contains the generated test-set mass predictions.
 
 ### Training Dataset
 
-The training dataset is:
-
 ```text
 global.csv
 ```
 
-It must contain:
+Required columns include:
 
-* `Mass` — observed volcanic eruption mass
-* `lon` — longitude
-* `lat` — latitude
+* `Mass`
+* `lon`
+* `lat`
 * Predictor/feature columns
 
 The first CSV column is treated as the index.
 
-The feature columns are automatically selected by excluding:
-
-```python
-["Mass", "lon", "lat"]
-```
-
 ### Test Dataset
-
-The test dataset is:
 
 ```text
 gris_features.csv
 ```
 
-It must contain:
+Required columns include:
 
-* The same predictor columns used for training
+* Predictor columns compatible with the training dataset
 * `lon`
 * `lat`
 
 A `Mass` column is not required for the test dataset.
 
-The feature names and preprocessing requirements must be compatible between the training and test datasets.
-
----
-
-## Installation
-
-Python 3.9 or later is recommended.
-
-Install the required dependencies with:
-
-```bash
-pip install -r requirements.txt
-```
-
-Main dependencies include:
-
-* NumPy
-* pandas
-* Matplotlib
-* scikit-learn
-
----
-
-## Usage
-
-From the repository root, run:
-
-```bash
-python Log_Transformed_ML.py
-```
-
-The program will:
-
-1. Load the training and test datasets.
-2. Select the model features.
-3. Standardize the predictor variables.
-4. Transform the target into logarithmic space.
-5. Perform K-fold cross-validation.
-6. Train the final GBRT model.
-7. Apply quantile regression to extreme predictions.
-8. Apply bias correction.
-9. Save the test predictions.
-10. Generate diagnostic plots.
-
 ---
 
 ## Outputs
 
-### Prediction CSV
+### Predictions
 
-The prediction file is generated at:
+The generated prediction file is:
 
 ```text
 predictions/predicted_mass_test.csv
 ```
 
-It contains:
+Columns:
 
 | Column           | Description                      |
 | ---------------- | -------------------------------- |
@@ -347,38 +490,23 @@ It contains:
 
 The mass unit is **Gt (gigatonnes)**, assuming the input `Mass` variable is provided in Gt.
 
-### Diagnostic Plot
+### Diagnostic Plots
 
-The observed-versus-predicted plot is:
+The pipeline generates:
 
 ```text
 plots/Observed_vs_Predicted_KFold_Log.png
-```
-
-The plot uses logarithmic axes and displays predictions from the K-fold validation procedure.
-
-### Mass Distribution Plots
-
-The workflow also generates separate histograms for small and large eruptions:
-
-```text
 plots/training_mass_small.png
 plots/training_mass_large.png
 plots/predicted_mass_small.png
 plots/predicted_mass_large.png
 ```
 
-The threshold used for this separation is:
-
-```text
-1.5 Gt
-```
-
 ---
 
 ## Evaluation Metrics
 
-The cross-validation procedure reports several metrics, including:
+The cross-validation procedure reports:
 
 * R²
 * Log-space R²
@@ -389,7 +517,7 @@ The cross-validation procedure reports several metrics, including:
 * Mean Log Error
 * Normalized error metrics
 
-The log-space metrics are particularly relevant given the broad dynamic range of volcanic eruption masses.
+Log-space metrics are particularly relevant because volcanic eruption masses have a broad dynamic range.
 
 ---
 
@@ -401,14 +529,12 @@ The workflow uses:
 random_state=42
 ```
 
-to provide reproducible behavior for the configured stochastic components.
-
-For reproducible results, use consistent:
+For reproducible results, maintain consistent:
 
 * Input datasets
 * Feature definitions
 * Python version
-* Package versions
+* Dependency versions
 * Model parameters
 * Preprocessing procedures
 
@@ -416,19 +542,19 @@ For reproducible results, use consistent:
 
 ## Data and Scientific Considerations
 
-Prediction quality depends strongly on the quality and representativeness of the training dataset.
+Prediction quality depends on the quality and representativeness of the training dataset.
 
-Particular care should be taken when applying the model to samples that are substantially outside the feature distribution represented by the training data.
+The model should be applied carefully to samples that are substantially outside the feature distribution represented by the training data.
 
-Predictions should therefore be interpreted in the context of:
+Predictions should be interpreted in the context of:
 
 * Training-data coverage
 * Feature distributions
 * Model assumptions
 * Data quality
-* The scientific context of the application
+* Scientific context
 
-The quantile-regression component used for extreme eruptions should not be interpreted as a complete probabilistic uncertainty model or as a P10–P90 confidence interval.
+The quantile-regression component should not be interpreted as a complete probabilistic uncertainty model or as a P10–P90 confidence interval.
 
 ---
 
@@ -448,7 +574,7 @@ If you use this software or methodology in a publication, thesis, report, or oth
 }
 ```
 
-The repository also contains a `CITATION.cff` file for machine-readable citation metadata.
+The repository also contains a `CITATION.cff` file.
 
 ---
 
@@ -456,9 +582,7 @@ The repository also contains a `CITATION.cff` file for machine-readable citation
 
 Copyright © 2026 N. Mousavi, J. Fullea, and S. M. Mousavi.
 
-All rights reserved.
-
-See the `LICENSE` file for the terms governing the use, reproduction, modification, and distribution of this software.
+See the `LICENSE` file for the terms governing use, reproduction, modification, and distribution.
 
 ---
 
@@ -467,9 +591,3 @@ See the `LICENSE` file for the terms governing the use, reproduction, modificati
 This software was developed in support of research on machine-learning-based volcanic eruption mass estimation.
 
 For the scientific methodology and detailed research context, please refer to the associated publication.
-
----
-
-## Contact
-
-For scientific questions, methodology-related issues, or questions concerning the implementation, please refer to the associated publication and the repository documentation.
