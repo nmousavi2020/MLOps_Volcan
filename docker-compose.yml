@@ -11,3 +11,6 @@ services:
     build: .
     depends_on:
       - mlflow
+    volumes:
+      - .:/app
+    working_dir: /app
