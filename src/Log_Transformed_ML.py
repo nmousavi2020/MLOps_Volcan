@@ -48,6 +48,8 @@ from config import (
     EPS,
     EXTREME_THRESHOLD,
     QUANTILES,
+    TRAIN_FILE,
+    TEST_FILE,
 )
 
 plt.rcParams.update({
@@ -66,8 +68,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error, median_absolute_error
 
 # ---------------------- CONFIG ----------------------
-TRAIN_FILE = "global.csv"
-TEST_FILE = "gris_features.csv"
+# TRAIN_FILE = "global.csv"
+# TEST_FILE = "gris_features.csv"
 
 OUT_PLOT_DIR = "plots"
 OUT_PRED_DIR = "predictions"
